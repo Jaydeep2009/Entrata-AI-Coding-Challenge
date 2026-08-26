@@ -425,6 +425,52 @@ Do not modify Task 1.
 
 ---
 
+# Post-MVP Refinement Record — Task 1
+
+The following section documents the real post-MVP refinement work performed after the initial implementation. It is intentionally written as an **outcome record rather than a fabricated verbatim prompt**, so the prompt history remains auditable.
+
+## Refinement areas
+
+### 1. UI refinement
+
+The initial functional UI was refined into a more polished movie-discovery experience with:
+
+- dark visual theme
+- purple/pink gradient accents
+- improved search-bar styling and icon treatment
+- stronger movie-card hierarchy
+- rating badges and genre pills
+- welcome/initial-state presentation
+- improved visual spacing and responsive layout
+
+The purpose was to improve usability and presentation without changing the underlying architecture.
+
+### 2. Runtime robustness
+
+The implementation was strengthened after reviewing failure paths:
+
+- API-key validation occurs at request time.
+- Timeout cancellation uses an actual `AbortController`.
+- Intentional request cancellation is distinguished from timeout failure.
+- External API responses are structurally validated before reaching the UI.
+- Malformed movie entries are filtered safely.
+- Optional fields receive safe defaults.
+- Duplicate searches are prevented.
+- A pending debounce is cancelled when a manual search is submitted.
+- Timers and asynchronous requests are cleaned up appropriately.
+
+### 3. Debug logging
+
+Minimal development logging was added around meaningful request/search lifecycle events to make debugging easier. The API key is deliberately excluded from log messages.
+
+### 4. Regression verification
+
+The final Task 1 implementation was re-tested after these refinements. The reported final state was **30 tests passing**, together with a successful production build.
+
+The important engineering principle was to make targeted improvements backed by verification rather than adding complexity simply for the sake of polish.
+
+---
+
 # AI-Assisted Engineering Principles Used
 
 The AI was used as an engineering assistant rather than as an unchecked code generator. Across both tasks, the workflow emphasized:
@@ -440,5 +486,6 @@ The AI was used as an engineering assistant rather than as an unchecked code gen
 - explicit security and secret-management considerations
 - keeping unrelated files and functionality unchanged
 - verifying implementation results with actual test/build commands
+- iterative UI refinement after core functionality was stable
 
 The intent of this process was to make AI-generated work reviewable, explainable, and testable rather than accepting the first generated solution without validation.
