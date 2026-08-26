@@ -85,8 +85,8 @@ flowchart LR
     G -- Success --> H[Validate / sanitize data]
     H --> I[Movie results]
     G -- Empty --> J[No-results state]
-    G -- 401/429/500 --> K[User-facing API error]
-    G -- Network/timeout --> L[Connection / timeout error]
+    G -- API error --> K[User-facing API error]
+    G -- Network or timeout --> L[Connection / timeout error]
 ```
 
 ## Main Components
@@ -110,7 +110,7 @@ flowchart LR
 - 10-second request timeout using `AbortController`
 - Distinction between intentional cancellation and timeout
 - Loading, initial-empty, no-results, success, and error states
-- HTTP-specific handling for common API failures including 401, 404, 429, and 5xx responses
+- HTTP-specific handling for common API failures
 - Runtime API-key configuration validation
 - Response-shape validation before consuming API data
 - Filtering of malformed movie records
