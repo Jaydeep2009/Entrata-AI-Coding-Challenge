@@ -1,0 +1,12 @@
+{
+  "name": "task-2-jsonl-parser",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}
