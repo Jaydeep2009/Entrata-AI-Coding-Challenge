@@ -190,18 +190,18 @@ Fix a JSON Lines parser that previously aborted at the first problematic line. T
 flowchart TD
     A[JSONL text] --> B[Normalize line endings]
     B --> C[Process each line]
-    C --> D{Blank / whitespace?}
+    C --> D[Blank or whitespace?]
     D -- Yes --> E[Record skipped-blank status]
     D -- No --> F[JSON.parse]
-    F --> G{Valid JSON?}
-    G -- Yes --> H[Append to ok]
-    G -- No --> I[Append {line, message} to errors]
+    F --> G[Valid JSON?]
+    G -- Yes --> H[Append valid record to ok]
+    G -- No --> I[Append line and message to errors]
     E --> J[Continue]
     H --> J
     I --> J
-    J --> K{More lines?}
+    J --> K[More lines?]
     K -- Yes --> C
-    K -- No --> L[Return {ok, errors}]
+    K -- No --> L[Return ok and errors]
 ```
 
 ## Original Failure Mode
