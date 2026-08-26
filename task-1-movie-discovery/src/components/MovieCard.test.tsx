@@ -21,7 +21,10 @@ describe('MovieCard', () => {
     expect(screen.getByText('2010')).toBeInTheDocument();
     expect(screen.getByText('8.8/10')).toBeInTheDocument();
     expect(screen.getByText(/A thief who steals/)).toBeInTheDocument();
-    expect(screen.getByText(/Action, Science Fiction, Thriller/)).toBeInTheDocument();
+    // Genres are now separate badge elements
+    expect(screen.getByText('Action')).toBeInTheDocument();
+    expect(screen.getByText('Science Fiction')).toBeInTheDocument();
+    expect(screen.getByText('Thriller')).toBeInTheDocument();
   });
 
   it('shows placeholder when poster_path is null', () => {
@@ -53,6 +56,7 @@ describe('MovieCard', () => {
     render(<MovieCard movie={movieWithLongOverview} />);
 
     const overviewElement = screen.getByText(/A+\.\.\./);
-    expect(overviewElement.textContent).toHaveLength(303); // 300 + "..."
+    // Overview is now truncated to 150 chars + "..."
+    expect(overviewElement.textContent).toHaveLength(153); // 150 + "..."
   });
 });
