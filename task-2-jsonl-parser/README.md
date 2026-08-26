@@ -1,43 +1,85 @@
-# Task 2: JSON Lines Parser - FIXED ✅
+# Task 2: JSON Lines Parser Bug
 
-## Problem Statement
+A small JSON Lines (JSONL) parser whose original failure mode was reproduced, diagnosed, fixed, and then strengthened with regression tests.
 
-A JSON Lines (JSONL) parser needed to be fixed. The original implementation had several critical bugs that have now been **resolved**.
+## Problem
 
-## Fixed Issues
+The parser processes newline-delimited JSON records and returns:
 
-1. ✅ **Continues on invalid JSON** - Processes all lines regardless of errors
-2. ✅ **Collects errors** - Records per-line errors with line numbers  
-3. ✅ **Handles blank lines** - Reports blank lines without terminating
-4. ✅ **Handles trailing commas** - Treats as invalid JSON and continues
-5. ✅ **Preserves valid data** - All valid records retained regardless of errors
+```javascript
+{
+  ok: [...],
+  errors: [
+    { line, message }
+  ]
+}
+```
 
-## Current Behavior (Fixed)
+The original buggy behavior was that `JSON.parse()` could throw on a blank or malformed line and abort the entire operation. That caused valid records after the failing line to be lost and prevented collection of complete diagnostics.
 
-The parser in `src/parser.js` now correctly:
+## Fixed Behavior
+
+The final parser:
+
+1. Preserves every valid JSON record in `ok`.
+2. Continues processing after malformed JSON.
+3. Records malformed-input errors with 1-based line numbers.
+4. Reports blank and whitespace-only lines as `Skipped blank line` without aborting.
+5. Treats trailing commas as invalid JSON rather than silently repairing input.
+6. Collects multiple errors in input order.
+7. Preserves valid-record order.
+8. Handles LF, CRLF, CR, and mixed line endings.
+9. Keeps the public `{ ok, errors }` output contract unchanged.
+
+## Parser Flow
+
+```mermaid
+flowchart TD
+    A[JSONL input] --> B[Normalize line endings]
+    B --> C[Process line]
+    C --> D{Blank?}
+    D -- Yes --> E[Record Skipped blank line]
+    D -- No --> F[JSON.parse]
+    F --> G{Valid?}
+    G -- Yes --> H[Append to ok]
+    G -- No --> I[Append line + message to errors]
+    E --> J[Continue]
+    H --> J
+    I --> J
+    J --> K{More lines?}
+    K -- Yes --> C
+    K -- No --> L[Return ok + errors]
+```
+
+## Implementation
+
+The fix intentionally remains small. The core logic is:
 
 ```javascript
 export function parseJSONL(input) {
-  const lines = input.split('\n');
+  const lines = normalizeLineEndings(input).split('\n');
   const ok = [];
   const errors = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNumber = i + 1;
-    
-    // Handle blank lines
+
     if (line.trim() === '') {
-      errors.push({ line: lineNumber, message: 'Skipped blank line' });
+      errors.push({
+        line: lineNumber,
+        message: 'Skipped blank line'
+      });
       continue;
     }
 
-    // Catch JSON.parse errors
     try {
-      const parsed = JSON.parse(line);
-      ok.push(parsed);
+      ok.push(JSON.parse(line));
     } catch (error) {
-      errors.push({ line: lineNumber, message: error.message });
+      errors.push({
+        line: lineNumber,
+        message: error.message
+      });
     }
   }
 
@@ -45,100 +87,130 @@ export function parseJSONL(input) {
 }
 ```
 
-## Running Tests
+The exact implementation also normalizes common line endings before processing so platform-specific `\r` characters do not become part of JSON records.
 
-```bash
-npm test
+## Example
+
+Input:
+
+```text
+{"valid":1}
+
+{bad}
+{"valid":2}
+{"trailing":3,}
 ```
 
-## Test Results (All Passing ✅)
-
-All 17 tests pass:
-
-- ✅ `parses valid JSONL correctly` - Baseline functionality works
-- ✅ `skips blank lines and reports them` - Reports blank lines without aborting
-- ✅ `continues parsing after malformed JSON` - Continues after errors
-- ✅ `records trailing comma as error and continues` - Handles trailing commas
-- ✅ `preserves valid records after encountering error` - Keeps valid data
-- ✅ `collects multiple errors` - Records all errors
-- ✅ `handles empty input` - Empty string handled gracefully
-- ✅ `reports multiple blank lines` - Multiple blanks reported
-- ✅ `handles complex mixed input` - Complex scenarios work
-- ✅ `preserves order of valid records` - Order maintained
-- ✅ `preserves order of errors` - Error order maintained
-- ✅ `handles only whitespace lines` - Whitespace-only lines handled
-- ✅ `handles CRLF line endings (Windows)` - Windows line endings work
-- ✅ `handles CRLF with blank lines` - CRLF blank lines detected
-- ✅ `handles CRLF with invalid JSON` - CRLF with errors work
-- ✅ `handles CR line endings (old Mac)` - Old Mac line endings work
-- ✅ `handles mixed line endings` - Mixed line endings in same file work
-
-## Example Output
+Output shape:
 
 ```javascript
-const input = '{"valid":1}\n\n{bad}\n{"valid":2}\n{"trailing":3,}';
-const result = parseJSONL(input);
-
-// Result:
 {
   ok: [
     { valid: 1 },
     { valid: 2 }
   ],
   errors: [
-    { line: 2, message: "Skipped blank line" },
-    { line: 3, message: "Expected property name or '}' in JSON..." },
-    { line: 5, message: "Expected double-quoted property name..." }
+    { line: 2, message: 'Skipped blank line' },
+    { line: 3, message: 'Expected property name...' },
+    { line: 5, message: 'Expected double-quoted property name...' }
   ]
 }
 ```
 
-## Implementation Changes
+Exact `JSON.parse()` error wording may vary slightly by Node.js version; the parser preserves the native message rather than rewriting it.
 
-**Minimal fix (10 lines added):**
-1. Added line-ending normalization for cross-platform compatibility
-2. Added blank line check with `line.trim() === ''`
-3. Wrapped `JSON.parse()` in try-catch
-4. Push errors to `errors` array instead of throwing
-5. Continue loop on all error conditions
+## Testing
 
-**Line-Ending Support:**
-- Handles Unix/Linux LF (`\n`)
-- Handles Windows CRLF (`\r\n`)  
-- Handles old Mac CR (`\r`)
-- Handles mixed line endings in same file
+Run:
 
-## Decisions Made
+```bash
+npm install
+npm test
+```
 
-1. **Blank lines** → Recorded in `errors` array with message "Skipped blank line"
-2. **Trailing commas** → Treated as invalid JSON (not normalized)
-3. **Empty input** → Returns `{ ok: [], errors: [{ line: 1, message: "Skipped blank line" }] }`
+The final suite reports:
 
-## License
+> **19 tests passed, 0 failed**
 
-MIT
+Coverage includes:
 
-
-## Cross-Platform Support
-
-The parser handles all common line-ending formats:
-- **Unix/Linux:** LF (`\n`)
-- **Windows:** CRLF (`\r\n`)
-- **Old Mac:** CR (`\r`)
-- **Mixed:** Files with different line endings
-
-Line endings are normalized internally before processing, ensuring consistent behavior across platforms.
-
-## Limitations
-
-1. **No line limit** - Very large files not optimized (could use streaming)
-2. **No encoding handling** - Assumes UTF-8 text
-3. **No JSON repair** - Invalid JSON is not corrected, only reported
-4. **Memory-based** - Entire input loaded into memory
+- valid JSONL
+- blank lines
+- whitespace-only lines
+- malformed JSON
+- malformed JSON in the middle of valid records
+- trailing commas
+- multiple errors
+- preservation of valid records after errors
+- ordering of valid records
+- ordering of errors
+- empty input
+- complex mixed input
+- Windows CRLF line endings
+- CRLF with blank lines
+- CRLF with invalid JSON
+- old-Mac CR line endings
+- mixed line endings
 
 ## Design Decisions
 
-✅ **Blank lines reported as errors** - Per specification requirement
-✅ **Trailing commas not normalized** - Per specification requirement  
-✅ **JSON.parse as validator** - Standard, reliable, well-tested
-✅ **Line-ending normalization** - Cross-platform compatibility
+### Blank lines
+
+The supplied output contract contains only `ok` and `errors`. Rather than inventing another result field, skipped blank lines are represented in `errors` with the explicit message:
+
+```text
+Skipped blank line
+```
+
+This preserves the existing public structure while making the status distinguishable.
+
+### Trailing commas
+
+A trailing comma is not valid JSON. The parser therefore records the native `JSON.parse()` error and continues instead of silently modifying the input.
+
+### Native JSON.parse
+
+No JSON-repair dependency is used. Native `JSON.parse()` remains the validator, keeping behavior standards-based and easy to explain.
+
+### Line endings
+
+Input is normalized before line processing so LF, CRLF, CR, and mixed line endings produce consistent behavior and line numbering.
+
+### Minimal fix
+
+The debugging change deliberately avoids a parser rewrite. The essential behavior is implemented with blank-line handling, per-line error recovery, and line-ending normalization.
+
+## Debugging Workflow
+
+The AI-assisted debugging process was intentionally staged:
+
+```text
+Reproduce baseline bug
+        ↓
+Identify root cause
+        ↓
+Resolve ambiguous requirements
+        ↓
+Apply minimal fix
+        ↓
+Add focused regression tests
+        ↓
+Review cross-platform line endings
+        ↓
+Run complete test suite
+```
+
+This approach demonstrates the difference between generating a replacement implementation and using AI to investigate, reason about, and validate a targeted bug fix.
+
+## Limitations
+
+- Memory-based rather than streaming; very large JSONL files could benefit from streaming.
+- UTF-8 text is assumed.
+- Invalid JSON is reported rather than repaired.
+- Native error-message wording can differ between Node.js versions.
+
+## Verification
+
+**Final result: 19/19 tests passing.**
+
+The parser now completes the entire input, preserves valid data, and returns structured diagnostics for problematic lines instead of aborting at the first error.
