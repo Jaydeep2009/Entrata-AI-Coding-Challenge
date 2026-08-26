@@ -6,14 +6,14 @@ A submission for the **Entrata AI Technical Coding Challenge**, containing two i
 
 | Task | Focus | Stack | Verification |
 |---|---|---|---|
-| **Task 1 — Movie Discovery** | Search, API integration, state handling, responsive UI | React + TypeScript + Vite + Tailwind CSS | **23/23 tests passing** + production build |
-| **Task 2 — JSONL Parser Bug** | Debugging, structured errors, resilience, edge cases | JavaScript + Node.js | **19/19 tests passing** |
+| **Task 1 — Movie Discovery** | Search, API integration, state handling, responsive UI, resilient client behavior | React + TypeScript + Vite + Tailwind CSS | **30 tests passing** + production build |
+| **Task 2 — JSONL Parser Bug** | Debugging, structured errors, resilience, edge cases | JavaScript + Node.js | **19 tests passing** |
 
 Detailed task documentation:
 
 - [`task-1-movie-discovery/README.md`](./task-1-movie-discovery/README.md)
 - [`task-2-jsonl-parser/README.md`](./task-2-jsonl-parser/README.md)
-- [`prompt.md`](./prompt.md) — complete AI prompt and iteration log
+- [`prompt.md`](./prompt.md) — AI prompts and documented iteration history
 
 ---
 
@@ -55,7 +55,7 @@ Entrata-AI-Coding-Challenge/
 
 ## Objective
 
-Build a responsive movie-discovery interface that searches The Movie Database (TMDB) API and presents useful movie information while handling loading, empty, error, timeout, cancellation, and malformed-response states gracefully.
+Build a responsive movie-discovery interface that searches The Movie Database (TMDB) API and presents useful movie information while handling loading, empty, error, timeout, cancellation, duplicate-request, and malformed-response states gracefully.
 
 ## Architecture
 
@@ -82,7 +82,7 @@ flowchart LR
     D --> E[Cancel previous request]
     E --> F[Fetch TMDB]
     F --> G{Response}
-    G -- Success --> H[Validate / map data]
+    G -- Success --> H[Validate / sanitize data]
     H --> I[Movie results]
     G -- Empty --> J[No-results state]
     G -- 401/429/500 --> K[User-facing API error]
@@ -91,12 +91,12 @@ flowchart LR
 
 ## Main Components
 
-- **`SearchBar`** — validates input and initiates searches.
-- **`useMovieSearch`** — coordinates search state, debounce behavior, request cancellation, and lifecycle cleanup.
-- **`movieApi`** — isolates TMDB communication, timeout handling, status-specific errors, and response processing.
-- **`MovieGrid` / `MovieCard`** — render responsive movie results and fallback values.
+- **`SearchBar`** — validates input, supports button search, and performs 300 ms debounced search without duplicating the request when the button is clicked.
+- **`useMovieSearch`** — coordinates search state, duplicate-query prevention, request cancellation, error handling, and lifecycle cleanup.
+- **`movieApi`** — isolates TMDB communication, timeout handling, status-specific errors, runtime API-key validation, response validation, and malformed-record filtering.
+- **`MovieGrid` / `MovieCard`** — render responsive movie results and safe fallback values.
 - **`EmptyState`, `LoadingSpinner`, `ErrorMessage`** — make application states explicit to the user.
-- **`types/movie.ts`** — keeps movie data contracts explicit.
+- **`types/movie.ts`** — keeps movie data and API error contracts explicit.
 - **`utils/formatters.ts` / `genreMap.ts`** — keep presentation transformations separate from API logic.
 
 ## Implemented Behavior
@@ -104,26 +104,33 @@ flowchart LR
 - Movie title search
 - Empty/whitespace query validation
 - 300 ms debounced searching
+- Manual Search-button submission
 - Duplicate-query prevention
 - Cancellation of an in-flight request when a new search begins
-- 10-second request timeout
+- 10-second request timeout using `AbortController`
+- Distinction between intentional cancellation and timeout
 - Loading, initial-empty, no-results, success, and error states
-- HTTP-specific handling for common API failures
-- Response validation and safe defaults for optional movie fields
+- HTTP-specific handling for common API failures including 401, 404, 429, and 5xx responses
+- Runtime API-key configuration validation
+- Response-shape validation before consuming API data
+- Filtering of malformed movie records
+- Safe defaults for optional movie fields
 - Poster fallback when an image is unavailable
 - Release-year and one-decimal rating formatting
-- Overview truncation at 300 characters
-- Responsive 1/2/3-column movie grid behavior
+- Overview truncation
+- Responsive movie-card grid
 - Cleanup of timers and asynchronous requests
+- Debug logging that does not print the API key
 
 ## Technology Stack
 
-- **React + TypeScript**
+- **React 19 + TypeScript**
 - **Vite**
 - **Tailwind CSS**
 - **Native Fetch API**
 - **AbortController**
 - **Vitest + React Testing Library**
+- **ESLint**
 
 ## Running Task 1
 
@@ -150,6 +157,12 @@ Run the test suite:
 npm test -- --run
 ```
 
+Run linting:
+
+```bash
+npm run lint
+```
+
 Create a production build:
 
 ```bash
@@ -158,11 +171,11 @@ npm run build
 
 ### Verification
 
-The final implementation was verified with **23/23 automated tests passing** and a successful production build.
+The final implementation was verified with **30 automated tests passing** and a successful production build.
 
 ## API Key Security
 
-The challenge requires loading the TMDB credential from an environment variable. Because this implementation is intentionally frontend-only, a Vite `VITE_*` variable is ultimately available to the browser bundle.
+The challenge requires loading the TMDB credential from an environment variable. Because this implementation is intentionally frontend-only, a `VITE_*` variable is ultimately available to the browser bundle.
 
 > **The API key is not secret once shipped to the client.**
 
@@ -174,7 +187,7 @@ Browser → Application Backend → TMDB API
                   secret stored here
 ```
 
-The repository contains `.env.example`; local `.env.local` files are excluded through `.gitignore`.
+The repository contains `.env.example`; local `.env.local` files are excluded through `.gitignore`, and the application does not log the API key.
 
 ---
 
@@ -193,13 +206,13 @@ flowchart TD
     C --> D[Blank or whitespace?]
     D -- Yes --> E[Record skipped-blank status]
     D -- No --> F[JSON.parse]
-    F --> G[Valid JSON?]
+    F --> G{Valid JSON?}
     G -- Yes --> H[Append valid record to ok]
     G -- No --> I[Append line and message to errors]
     E --> J[Continue]
     H --> J
     I --> J
-    J --> K[More lines?]
+    J --> K{More lines?}
     K -- Yes --> C
     K -- No --> L[Return ok and errors]
 ```
@@ -253,7 +266,7 @@ The final implementation was verified with **19/19 tests passing**, including ma
 1. **Invalid JSON is reported, not repaired.** A trailing comma is treated as invalid JSON and recorded as an error.
 2. **Blank lines are represented in the existing `errors` structure.** This keeps the public output contract unchanged while distinguishing them through the message `Skipped blank line`.
 3. **Native `JSON.parse()` remains the validator.** No third-party JSON-repair dependency is required.
-4. **Line endings are normalized.** This avoids platform-specific behavior while preserving line numbers.
+4. **Line endings are normalized.** This provides consistent LF, CRLF, CR, and mixed-line-ending behavior.
 5. **The implementation remains intentionally small.** Streaming and advanced recovery could be added for very large files, but were outside the supplied MVP scope.
 
 ---
@@ -262,7 +275,7 @@ The final implementation was verified with **19/19 tests passing**, including ma
 
 | Area | Result |
 |---|---:|
-| Task 1 automated tests | **23/23 passing** |
+| Task 1 automated tests | **30/30 passing** |
 | Task 1 production build | **Passing** |
 | Task 2 automated tests | **19/19 passing** |
 | Task 2 malformed/blank/error cases | **Covered** |
@@ -293,10 +306,12 @@ Failure / edge-case analysis
     ↓
 Targeted refinement
     ↓
+UI and robustness polish
+    ↓
 Final verification
 ```
 
-For Task 2 specifically, the workflow included creating a minimal buggy baseline, reproducing the documented failure mode, analyzing ambiguous requirements, applying a minimal fix, and adding robustness tests.
+For Task 2 specifically, the workflow included creating a minimal buggy baseline, reproducing the documented failure mode, analyzing ambiguous requirements, applying a minimal fix, and adding robustness tests for cross-platform line endings.
 
 The prompts used during the challenge are preserved in [`prompt.md`](./prompt.md).
 
@@ -311,6 +326,7 @@ The prompts used during the challenge are preserved in [`prompt.md`](./prompt.md
 - **Automated verification:** important behavior is backed by tests.
 - **Security awareness:** the frontend API-key limitation is explicitly documented.
 - **Transparent assumptions:** ambiguous behavior is documented where the supplied specification does not completely define it.
+- **AI-assisted iteration:** AI output was reviewed, challenged, tested, and refined rather than accepted blindly.
 
 ---
 
@@ -337,11 +353,14 @@ These are documented scope or production-hardening opportunities rather than hid
 # Final Verification Checklist
 
 - [x] Task 1 implemented
-- [x] Task 1 automated tests passing
+- [x] Task 1 automated tests passing — **30/30**
 - [x] Task 1 production build passing
+- [x] Task 1 runtime/API error handling covered
+- [x] Task 1 request cancellation and timeout handling covered
+- [x] Task 1 malformed API-response handling covered
 - [x] Task 2 debugging workflow completed
-- [x] Task 2 automated tests passing
-- [x] Edge cases covered
+- [x] Task 2 automated tests passing — **19/19**
+- [x] Task 2 edge cases and line endings covered
 - [x] API credentials excluded from source control
 - [x] Root `prompt.md` included
 - [x] AI-assisted development process documented
