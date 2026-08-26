@@ -1,146 +1,255 @@
 # Movie Discovery Application
 
-A React-based movie search application using The Movie Database (TMDB) API.
+A responsive React + TypeScript movie-search application using The Movie Database (TMDB) API, built as Task 1 of the Entrata AI Technical Coding Challenge.
 
 ## Features
 
 - Search movies by title
-- Display movie information (poster, title, release year, rating, overview, genres)
-- Debounced search (300ms)
-- Responsive design (1/2/3 column grid)
-- Comprehensive error handling
-- Loading states
-- Empty and no-results states
+- Search by button or 300 ms debounced input
+- Duplicate-query prevention
+- Request cancellation when a new search begins
+- 10-second request timeout
+- Distinguishes intentional cancellation from timeout failures
+- Runtime API-key configuration validation
+- Response-shape validation and malformed-record filtering
+- Display poster, title, release year, rating, overview, and genres
+- Safe fallbacks for missing movie fields/posters
+- Loading, initial, empty, no-results, and error states
+- HTTP-specific handling for common API failures
+- Responsive 1/2/3-column movie grid
+- Minimal debug logging without exposing the API key
 
-## Setup
+## Architecture
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Configure API Key:**
-   
-   Create a `.env.local` file in the project root:
-   ```bash
-   VITE_TMDB_API_KEY=your_api_key_here
-   ```
-   
-   Get your free API key from: https://www.themoviedb.org/settings/api
-
-3. **Start development server:**
-   ```bash
-   npm run dev
-   ```
-
-4. **Run tests:**
-   ```bash
-   npm test
-   ```
-
-5. **Build for production:**
-   ```bash
-   npm run build
-   ```
-
-## Security Note
-
-**⚠️ CLIENT-SIDE API KEY LIMITATION**
-
-This implementation uses a **frontend-only architecture** where the TMDB API key is loaded from environment variables and bundled into the client-side JavaScript. 
-
-**Security Implications:**
-- The API key is **exposed** in the browser (visible in DevTools and bundled JS)
-- Anyone can extract and potentially abuse the key
-- This approach is **NOT suitable for production**
-
-**Why this approach was chosen:**
-- Time constraint of 120-minute coding challenge
-- Focus on demonstrating core functionality and React architecture
-- Acceptable for development/demo with a read-only TMDB API key
-
-**Production-Ready Solution:**
-A production application should use a **backend proxy**:
+```mermaid
+flowchart TD
+    User[User] --> Search[SearchBar]
+    Search --> Hook[useMovieSearch]
+    Hook --> Service[movieApi]
+    Service --> TMDB[TMDB API]
+    TMDB --> Service
+    Service --> Hook
+    Hook --> Grid[MovieGrid]
+    Grid --> Card[MovieCard]
+    Hook --> States[Loading / Empty / Error states]
 ```
-Frontend → Backend API → TMDB API
+
+### Responsibilities
+
+- **`SearchBar`** — owns input state and validation, triggers manual searches, and manages the 300 ms debounce.
+- **`useMovieSearch`** — owns search state, prevents duplicate queries, cancels in-flight requests, and handles lifecycle cleanup.
+- **`movieApi`** — handles TMDB requests, timeout/cancellation, HTTP errors, API-key validation, response validation, and data sanitization.
+- **`MovieGrid` / `MovieCard`** — render results and presentation fallbacks.
+- **`EmptyState`, `LoadingSpinner`, `ErrorMessage`** — represent user-facing application states.
+- **`types/movie.ts`** — defines movie and API-error contracts.
+- **`utils/formatters.ts` / `genreMap.ts`** — isolate presentation formatting and genre mapping.
+
+## Search Flow
+
+```mermaid
+flowchart LR
+    A[User types] --> B{Query valid?}
+    B -- No --> C[Validation]
+    B -- Yes --> D[300ms debounce]
+    C --> A
+    D --> E[Cancel previous request]
+    E --> F[TMDB request]
+    F --> G{Response}
+    G -- Valid --> H[Sanitize movies]
+    H --> I[Render results]
+    G -- Empty --> J[No-results state]
+    G -- Error --> K[User-facing error]
 ```
-- API key stored securely on server
-- Backend validates and rate-limits requests
-- Key never exposed to clients
 
 ## Technology Stack
 
-- **Framework:** React 18 + TypeScript
-- **Build Tool:** Vite
-- **Styling:** Tailwind CSS
-- **Testing:** Vitest + React Testing Library
-- **HTTP Client:** Native fetch with AbortController
+- **React 19**
+- **TypeScript 6**
+- **Vite**
+- **Tailwind CSS**
+- **Native Fetch API**
+- **AbortController**
+- **Vitest**
+- **React Testing Library**
+- **ESLint**
+
+The implementation intentionally uses native `fetch` instead of Axios to keep the dependency surface small while still supporting cancellation and timeout handling through `AbortController`.
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure the TMDB API key
+
+Create `.env.local` in this directory:
+
+```bash
+VITE_TMDB_API_KEY=your_api_key_here
+```
+
+`.env.local` is ignored by Git. `.env.example` is included as a safe configuration template.
+
+### 3. Start the development server
+
+```bash
+npm run dev
+```
+
+### 4. Run tests
+
+```bash
+npm test -- --run
+```
+
+### 5. Run linting
+
+```bash
+npm run lint
+```
+
+### 6. Create a production build
+
+```bash
+npm run build
+```
+
+## Verification
+
+The final implementation was verified with:
+
+- **30/30 automated tests passing**
+- Successful TypeScript/Vite production build
+- API-service error and malformed-response coverage
+- Search-state and cancellation coverage
+- Component and user-interaction coverage
+
+## Testing Scope
+
+The tests cover high-value behavior rather than only the happy path, including:
+
+- Successful TMDB search
+- Empty results
+- 401 authentication errors
+- 404/429/5xx API errors
+- Network failures
+- Request timeout behavior
+- Malformed API responses
+- Malformed individual movie records
+- Missing optional movie fields
+- Invalid genre IDs
+- HTTPS request construction
+- Search validation
+- Debounce/manual-search behavior
+- Duplicate-query prevention
+- Request cancellation
+- Movie rendering and UI states
+
+## API Key Security
+
+This challenge implementation intentionally uses a frontend-only architecture, so a Vite `VITE_*` environment variable is ultimately bundled into browser-accessible JavaScript.
+
+> **Important:** an environment variable prevents accidental hardcoding/source-control exposure, but it does **not** make a client-side API key secret after deployment.
+
+For a production system, the architecture should be:
+
+```text
+Browser → Application Backend → TMDB API
+                         ↑
+                  secret stored here
+```
+
+The backend could additionally enforce authentication, rate limiting, caching, and server-side secret management.
+
+The application validates that the key is configured at request time and does not print the key in debug logs.
+
+## Error Handling
+
+The API service distinguishes several failure categories:
+
+| Failure | User-facing behavior |
+|---|---|
+| Missing API key | Configuration error |
+| 401 | Invalid API-key error |
+| 404 | No matching movies |
+| 429 | Rate-limit message |
+| 5xx | Server error message |
+| Network failure | Connection error |
+| 10-second timeout | Timeout message |
+| Intentional cancellation | Silently ignored |
+| Malformed response | Unexpected-response error |
+| Malformed movie item | Item filtered out safely |
+
+## UI States
+
+The UI explicitly handles:
+
+1. **Initial state** — prompts the user to search.
+2. **Loading state** — indicates an active request.
+3. **Success state** — displays movie cards.
+4. **No-results state** — explains that no movies matched the query.
+5. **Validation state** — prevents empty searches.
+6. **API/network/timeout error state** — provides a useful failure message.
 
 ## Project Structure
 
-```
+```text
 src/
-├── components/          # React components
+├── components/
 │   ├── SearchBar.tsx
 │   ├── MovieCard.tsx
 │   ├── MovieGrid.tsx
 │   ├── LoadingSpinner.tsx
 │   ├── ErrorMessage.tsx
 │   └── EmptyState.tsx
-├── hooks/              # Custom React hooks
+├── hooks/
 │   └── useMovieSearch.ts
-├── services/           # API services
-│   └── movieApi.ts
-├── types/              # TypeScript types
+├── services/
+│   ├── movieApi.ts
+│   └── movieApi.test.ts
+├── types/
 │   └── movie.ts
-├── utils/              # Utility functions
+├── utils/
 │   ├── formatters.ts
 │   └── genreMap.ts
-└── test/               # Test setup
-    └── setup.ts
+├── test/
+│   └── setup.ts
+├── App.tsx
+├── index.css
+└── main.tsx
 ```
 
-## Testing
+## Design Decisions
 
-The test suite covers:
-- API service (success, errors, timeout, network failures)
-- Custom hooks (state management, request cancellation)
-- Component behavior (search validation, rendering)
-- User interactions
+### Native fetch + AbortController
 
-Run tests:
-```bash
-npm test              # Run once
-npm test -- --watch   # Watch mode
-npm test -- --ui      # UI mode
-```
+A third-party HTTP client was unnecessary for this challenge. Native `fetch` provides the required request behavior, while `AbortController` supports both intentional cancellation and timeout cancellation.
 
-## Browser Support
+### Debounce + explicit button search
 
-Modern browsers supporting:
-- ES2020+
-- Fetch API
-- AbortController
-- CSS Grid
+The application supports both expected interaction styles. A 300 ms debounce provides convenient automatic searching, while the Search button gives users explicit control. The pending debounce is cancelled when the button is submitted, and duplicate-query protection prevents redundant API calls.
 
-## Assumptions
+### Runtime API-key validation
 
-1. **API Key:** Using TMDB v3 API key (not bearer token)
-2. **Genre Mapping:** Hardcoded 19 TMDB genres (sufficient for MVP)
-3. **Timeout:** 10-second request timeout
-4. **Debounce:** 300ms delay for auto-search
-5. **Overview Truncation:** 300 characters max
-6. **Responsive Breakpoints:** 768px (tablet), 1024px (desktop)
+The API key is checked when a search is requested rather than only during module initialization. This makes configuration failures explicit and easier to test.
+
+### Response validation
+
+External API data is treated as untrusted input. The service verifies the response shape, filters invalid movie entries, validates required fields, and supplies safe defaults for optional fields before data reaches the UI.
+
+### Minimal logging
+
+Debug logs are limited to meaningful request/search lifecycle events. The API key is never included in logs.
 
 ## Known Limitations
 
-1. Client-side API key exposure (see Security Note above)
-2. No caching or request deduplication beyond duplicate query prevention
-3. No pagination (shows first page of results only)
-4. Genre mapping is static (not fetched from API)
-5. No keyboard navigation enhancements
-6. Basic accessibility (could be improved with ARIA labels)
+1. The client-side API key is not a true secret; a production application should use a backend proxy.
+2. Pagination is not implemented because the challenge MVP focuses on the first result page.
+3. Genre mapping is static.
+4. Accessibility and keyboard-navigation enhancements could be expanded further.
+5. No persistent client-side caching is implemented.
 
-## License
-
-MIT
+These are documented production-hardening opportunities rather than hidden behavior gaps in the challenge MVP.
