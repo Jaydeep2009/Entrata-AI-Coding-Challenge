@@ -1,14 +1,20 @@
-# AI Prompt Log
+# AI Prompt Log — Entrata AI Technical Coding Challenge
 
-This document records the prompts actually used with AI tools during the Entrata AI Technical Coding Challenge.
+This document records the prompts actually used with AI coding tools during the challenge.
 
-The prompts are grouped by task to show the development workflow, including requirement analysis, design review, implementation, debugging, and iterative refinement.
+The goal of the log is to make the AI-assisted engineering process auditable: requirements were analyzed before implementation, design decisions were reviewed, implementation was performed incrementally, and the resulting code was validated with tests and targeted robustness checks.
+
+> **Authenticity note:** The prompt blocks below preserve the prompts used during the work. The explanatory notes are documentation of the resulting workflow, not additional prompts presented as if they were used.
 
 ---
 
 # Task 1 — Movie Discovery API Page
 
 ## Prompt 1 — Requirements Analysis & Architecture
+
+**Intent:** Establish the requirements, choose a practical stack, and create an implementation plan before writing code.
+
+**Prompt used:**
 
 ```text
 I need to build Task 1 of the Entrata AI Technical Coding Challenge: a Movie Discovery API Page.
@@ -66,7 +72,15 @@ Keep the plan realistic for a 120-minute coding challenge. Prioritize the core r
 Do not modify prompt.md in this step; I will maintain the prompt log separately.
 ```
 
+**Iteration outcome:** The AI produced an initial architecture and implementation plan. This was intentionally reviewed before code generation rather than accepting the first design automatically.
+
+---
+
 ## Prompt 2 — Design Review & Simplification
+
+**Intent:** Challenge the initial design, remove unnecessary complexity, and make the architecture realistic for the 120-minute constraint.
+
+**Prompt used:**
 
 ```text
 Review the design you just produced against the original requirements and the 120-minute challenge constraint.
@@ -116,7 +130,15 @@ Return:
 - any assumptions that should be documented in README.md
 ```
 
+**Iteration outcome:** The initial design was simplified before implementation. The final implementation direction used React + TypeScript + Vite, Tailwind CSS, native `fetch`/`AbortController`, Vitest + React Testing Library, focused tests, and a simple frontend architecture. The client-side API-key limitation was identified as a production concern to document rather than hiding it.
+
+---
+
 ## Prompt 3 — MVP Implementation
+
+**Intent:** Implement the approved design incrementally, with the MVP first and validation after implementation.
+
+**Prompt used:**
 
 ```text
 The revised design is approved with the following decisions:
@@ -197,11 +219,27 @@ At the end, provide a concise summary of:
 Do not modify prompt.md or README.md yet unless required for the project to run. We will handle the final documentation separately.
 ```
 
+**Verification outcome:** The implemented Task 1 project subsequently passed the reported automated suite: **23 tests passed across 4 test files**, and the production build completed successfully with `tsc -b && vite build`.
+
 ---
 
 # Task 2 — JSON Lines Parser Bug
 
+## Context / Baseline Decision
+
+No starter parser implementation was included in the challenge materials available to us. The supplied Task 2 specification described the expected JSONL behavior and the failure mode, but did not provide an existing codebase.
+
+Rather than pretending that a starter implementation existed, the workflow explicitly created a **minimal intentionally buggy baseline** that reproduced the documented failure mode. This allowed the debugging process to be demonstrated and tested while keeping the implementation small and directly traceable to the specification.
+
+The baseline intentionally used `JSON.parse()` without per-line error recovery, so malformed input caused processing to abort. The later prompts then treated the baseline as the debugging target.
+
+---
+
 ## Prompt 1 — Buggy Baseline
+
+**Intent:** Create a minimal reproducible baseline rather than prematurely generating the final solution.
+
+**Prompt used:**
 
 ```text
 Task 2 does not have a provided starter codebase. The only official specification available is:
@@ -241,7 +279,15 @@ After creating the baseline, stop and explain:
 Do not implement the fix yet.
 ```
 
+**Iteration outcome:** The baseline reproduced the intended failure modes. The baseline tests demonstrated that blank lines, malformed JSON, and trailing commas could terminate processing and that valid records after an error were not returned.
+
+---
+
 ## Prompt 2 — Ambiguity & Root-Cause Review
+
+**Intent:** Review the AI's proposed fix against the exact specification before allowing code changes, especially where the specification was ambiguous.
+
+**Prompt used:**
 
 ```text
 The baseline diagnosis is correct. Before implementing the fix, I want to resolve two ambiguities in the proposed approach and then produce a precise implementation plan.
@@ -283,7 +329,15 @@ Return:
 4. The test cases that should prove the fix.
 ```
 
+**Iteration outcome:** The design review chose to keep the public `{ ok, errors }` contract, report skipped blank lines in `errors` with the explicit message `Skipped blank line`, and treat trailing commas as invalid JSON that should be recorded and followed by continued processing rather than silently repairing the input.
+
+---
+
 ## Prompt 3 — Minimal Fix & Tests
+
+**Intent:** Implement only the approved behavior and validate it with focused tests rather than rewriting the parser.
+
+**Prompt used:**
 
 ```text
 The diagnosis and design are approved.
@@ -334,7 +388,15 @@ At the end, report:
 - any assumptions or limitations
 ```
 
+**Verification outcome:** The parser was changed with a small, localized fix: blank-line handling plus per-line `try/catch` around `JSON.parse()`. The resulting test suite reported **12/12 tests passing** before the additional line-ending robustness review.
+
+---
+
 ## Prompt 4 — Line-Ending Robustness Review
+
+**Intent:** Perform one focused post-fix review for a realistic cross-platform input edge case without expanding the scope unnecessarily.
+
+**Prompt used:**
 
 ```text
 The core Task 2 implementation is approved and all 12 tests currently pass.
@@ -358,3 +420,25 @@ Run the complete test suite after the change and report the result.
 
 Do not modify Task 1.
 ```
+
+**Verification outcome:** The final Task 2 run reported **19 tests passed, 0 failed**, including CRLF, CR, and mixed line-ending cases.
+
+---
+
+# AI-Assisted Engineering Principles Used
+
+The AI was used as an engineering assistant rather than as an unchecked code generator. Across both tasks, the workflow emphasized:
+
+- requirement analysis before implementation
+- explicit architectural trade-offs
+- MVP-first prioritization for the 120-minute constraint
+- asking the AI to explain root causes before debugging
+- challenging ambiguous interpretations against the supplied specification
+- minimal, localized fixes instead of unnecessary rewrites
+- focused automated tests for important behavior and edge cases
+- post-implementation robustness review
+- explicit security and secret-management considerations
+- keeping unrelated files and functionality unchanged
+- verifying implementation results with actual test/build commands
+
+The intent of this process was to make AI-generated work reviewable, explainable, and testable rather than accepting the first generated solution without validation.
