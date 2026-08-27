@@ -7,7 +7,7 @@ A submission for the **Entrata AI Technical Coding Challenge**, containing two i
 | Task | Focus | Stack | Verification |
 |---|---|---|---|
 | **Task 1 — Movie Discovery** | Search, API integration, state handling, responsive UI, resilient client behavior | React + TypeScript + Vite + Tailwind CSS | **30 tests passing** + production build |
-| **Task 2 — JSONL Parser Bug** | Debugging, structured errors, resilience, edge cases | JavaScript + Node.js | **17 tests passing** |
+| **Task 2 — JSONL Parser Bug** | Debugging, structured errors, resilience, edge cases | JavaScript + Node.js | **19 tests passing** |
 
 Detailed task documentation:
 
@@ -171,7 +171,7 @@ npm run build
 
 ### Verification
 
-The repository includes a production TypeScript/Vite build configuration that excludes test-only source files from the application type-check. After this configuration fix, run the command above from a clean install to verify the build locally.
+The production TypeScript/Vite build configuration now excludes test-only source files from the application type-check, addressing the clean-clone `tsc -b` issue found during external review.
 
 The Task 1 test suite contains **30 automated tests**.
 
@@ -261,7 +261,7 @@ The repository also contains `demo.js` for a quick behavioral demonstration.
 
 ### Verification
 
-The current Task 2 test file contains **17 meaningful regression tests**. The documented result is **17/17 passing**.
+The final Task 2 suite contains **19 meaningful regression tests**, including two additional recovery tests for consecutive malformed lines and mixed blank/malformed input.
 
 ---
 
@@ -270,8 +270,8 @@ The current Task 2 test file contains **17 meaningful regression tests**. The do
 | Area | Result |
 |---|---:|
 | Task 1 automated tests | **30 tests** |
-| Task 1 production build | **Build configuration fixed; verify with `npm run build`** |
-| Task 2 automated tests | **17/17 passing** |
+| Task 1 production build configuration | **Fixed after external clean-clone review** |
+| Task 2 automated tests | **19/19 passing** |
 | Task 2 malformed/blank/error cases | **Covered** |
 | Task 2 line-ending cases | **Covered** |
 
@@ -353,7 +353,7 @@ These are documented scope or production-hardening opportunities rather than hid
 - [x] Task 1 request cancellation and timeout handling covered
 - [x] Task 1 malformed API-response handling covered
 - [x] Task 2 debugging workflow completed
-- [x] Task 2 automated tests — **17/17**
+- [x] Task 2 automated tests — **19/19**
 - [x] Task 2 edge cases and line endings covered
 - [x] API credentials excluded from source control
 - [x] Root `prompt.md` included
