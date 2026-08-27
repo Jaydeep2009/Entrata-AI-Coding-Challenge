@@ -128,9 +128,7 @@ npm install
 npm test
 ```
 
-The final suite reports:
-
-> **19 tests passed, 0 failed**
+The current repository test file contains **17 meaningful regression tests**, all of which pass.
 
 Coverage includes:
 
@@ -211,6 +209,6 @@ This approach demonstrates the difference between generating a replacement imple
 
 ## Verification
 
-**Final result: 19/19 tests passing.**
+**Current repository result: 17/17 tests passing.**
 
 The parser now completes the entire input, preserves valid data, and returns structured diagnostics for problematic lines instead of aborting at the first error.
