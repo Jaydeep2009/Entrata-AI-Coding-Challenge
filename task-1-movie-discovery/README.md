@@ -119,13 +119,11 @@ npm run build
 
 ## Verification
 
-The final implementation was verified with:
+The final implementation contains **30 automated tests** covering critical API, state, component, and interaction behavior.
 
-- **30/30 automated tests passing**
-- Successful TypeScript/Vite production build
-- API-service error and malformed-response coverage
-- Search-state and cancellation coverage
-- Component and user-interaction coverage
+During final review, a clean-clone TypeScript build issue was identified: the application `tsconfig` was type-checking test-only files. The production TypeScript configuration has now been corrected to exclude `*.test.ts`, `*.test.tsx`, and test setup files from the application build while leaving them available to Vitest.
+
+Run `npm run build` after a clean install to verify the corrected configuration.
 
 ## Testing Scope
 
