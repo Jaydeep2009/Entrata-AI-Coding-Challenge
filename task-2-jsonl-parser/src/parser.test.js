@@ -186,4 +186,24 @@ describe('JSONL Parser - Fixed Implementation', () => {
     assert.strictEqual(result.ok.length, 4);
     assert.strictEqual(result.errors.length, 0);
   });
+
+  test('continues after consecutive malformed lines', () => {
+    const input = '{"valid":1}\n{bad1}\n{bad2}\n{"valid":2}';
+    const result = parseJSONL(input);
+
+    assert.deepStrictEqual(result.ok, [{ valid: 1 }, { valid: 2 }]);
+    assert.strictEqual(result.errors.length, 2);
+    assert.deepStrictEqual(result.errors.map((error) => error.line), [2, 3]);
+    assert.ok(result.errors.every((error) => typeof error.message === 'string' && error.message.length > 0));
+  });
+
+  test('continues after a blank line followed by malformed JSON', () => {
+    const input = '{"first":1}\n\n{bad}\n{"last":2}';
+    const result = parseJSONL(input);
+
+    assert.deepStrictEqual(result.ok, [{ first: 1 }, { last: 2 }]);
+    assert.deepStrictEqual(result.errors.map((error) => error.line), [2, 3]);
+    assert.match(result.errors[0].message, /skipped blank/i);
+    assert.ok(result.errors[1].message.length > 0);
+  });
 });
