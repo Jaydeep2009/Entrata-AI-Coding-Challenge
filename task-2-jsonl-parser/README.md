@@ -128,7 +128,7 @@ npm install
 npm test
 ```
 
-The current repository test file contains **17 meaningful regression tests**, all of which pass.
+The final suite contains **19 meaningful regression tests**, all designed to verify parser recovery and edge-case behavior.
 
 Coverage includes:
 
@@ -140,6 +140,8 @@ Coverage includes:
 - trailing commas
 - multiple errors
 - preservation of valid records after errors
+- consecutive malformed lines
+- blank line followed by malformed JSON
 - ordering of valid records
 - ordering of errors
 - empty input
@@ -209,6 +211,6 @@ This approach demonstrates the difference between generating a replacement imple
 
 ## Verification
 
-**Current repository result: 17/17 tests passing.**
+**Final result: 19/19 tests passing.**
 
 The parser now completes the entire input, preserves valid data, and returns structured diagnostics for problematic lines instead of aborting at the first error.
